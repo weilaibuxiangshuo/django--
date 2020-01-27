@@ -1,0 +1,26 @@
+1.在app下面新建 fixtures 文件夹，并在文件夹下面，新建 initial_data.json 文件
+
+格式：
+[
+  {
+    "model":"app名.模型类名",  #注意如果有定义db_table自定义表名称，要使用自定义的名称
+    "id":101,                 #id不要根表里的id重复
+    "fields":{                #设置字段的内容
+      "name":"9999992"        #字段名:内容
+    }
+  }
+]
+
+例子如下：
+[
+  {
+    "model":"new.roles",
+    "id":101,
+    "fields":{
+      "name":"9999992"
+    }
+  }
+]
+
+最后执行：(系统会自动搜索fixtures文件下面，无需到此文件夹下面)
+python manage.py initial_data.json   

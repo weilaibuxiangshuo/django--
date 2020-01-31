@@ -1,0 +1,24 @@
+1.使用GET方法提交表单，url地址上中文会显示乱码，例如：%E4%B8%8D%E4%B8%80%E6%A0%B7%E7%9A%84
+
+python3中处理如下：
+import  urllib
+
+query2="%E4%B8%8D%E4%B8%80%E6%A0%B7%E7%9A%84"
+keyword = urllib.parse.unquote(query2,encoding="utf-8")
+
+2.表单提交POST跟GET不同赋值形式
+
+在JS文件中：GET
+
+let newData = new FormData()
+newData['mm']="value"
+请求提交中：
+params:newData
+
+在JS文件中：POST
+
+let newData = new FormData()
+newData.append("mm","value")
+
+请求提交中：
+data:newData

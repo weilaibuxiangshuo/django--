@@ -1,0 +1,8 @@
+1.字符串有\n \r 能通过前面加r防转义
+例如：print(r"uuu\npp")
+
+2.如果变量里的字符串则需要通过repr，才可以不转义，其它像 +  , .join ,format都不可以
+例如：
+
+aa="uuu\npp"
+print(repr(aa))  

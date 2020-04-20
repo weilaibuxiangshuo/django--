@@ -1,0 +1,253 @@
+# -*- coding:utf-8 -*-
+from django.shortcuts import render,redirect
+
+"""
+HttpRequest对象：
+    一、概述：
+        服务器接收http请求后，会根据报文创建HttpRequest对象
+        视图第一个参数就是HttpRequest对象
+        django自动创建,之后调用视图时传递给视图
+    二、属性：
+        path 请求的完整路径（不包括域名和端口）
+        method 表示请求的方式，常用的用GET,POST
+        encoding 表示浏览器提交的数据编码方式,一般为UTF-8
+        GET 类似字典的对象，包含了get请求的所有参数
+        POST 类似字典的对象，包含了post请求的所有参数
+        FILES 类似字典的对象，包含了所有上传的文件
+        COOKIES 字典，包含所有的cookie
+            cookie=reuqes.COOKIES
+            print(cookie[Name])
+        session 类似字典的对象，表示当前会话
+    三、方法：
+        is_ajax() 如果是通过XMLHttpRequest发起的，返回True
+    四、QueryDict对象：
+        request对象中的GET,POST都是QueryDict对象
+        方法：
+            get()   
+                作用：根据键获取值，只能获取一个值
+                www.sunck.com/abc?a=1&b=2&c=3
+            getlist()   
+                将键的值以列表的形式返回,可以获取多个值
+                www.sunck.com/abc?a=1&a=2&c=3
+HttpResponse对象：
+    一、概述
+        作用：给浏览器返回数据
+        HttpResponse对象是由DJANGO创建的，HttpResponse对象是由程序员创建
+    二、用法：
+        不调用模版，直接返回数据
+            from django.http import HttpResponse,HttpRequest
+            def index(request):
+                return HttpResponse("ok")
+        调用模版
+            使用render方法
+                原型：render(request,templateName[,context])
+                作用：结合数据和模版，返回完整的HTML页面
+                参数：
+                    1.request 请求体对象 2.templateName 模版路径 3.context 传递给渲染在模版上的数据
+                示例：
+                    from django.shortcuts import render
+                    def index(request):
+                        return render(request,"index.html")
+    三、属性
+        context 表示返回内容的类型
+        charset 表示返回数据编码格式 
+        status_code 响应状态码
+            200、304、404、500
+        context-type 指定输出的MINE类型
+    四、方法
+        init 使用页面内容实例httpresponse对象
+        write(context) 以文件的形式写入，context可以写html代码
+        flush() 以文件的形式输出缓冲区
+        set_cookie(key,value="",max_age=None,exprise=None)  设置cookie
+            res = HttpResponse()
+            cookie=res.set_cookie("sunck","good")  #设置cookie
+        delete_cookie(key)  删除cookie，如果key不存在，不会报错
+    五、子类HttpResponseRedirect(重定向)
+        from django.http import HttpResponseRedirect
+        def index(request):
+            return HttpResponseRedirect("/goo/")
+        简写：redirect(to)
+        from django.shortcuts import redirect
+        def index(request):
+            return redirect("/goo/")
+    六、子类JSonResponse
+        返回json数据，一般用于异步请求
+        __init__(self.data)
+        data    字典对象
+        注意：context-type类型为application/json
+
+状态保持：
+    1.概述：
+        http协议是无状态的，每次请求都是一次新的请求，不记得以前的请求
+        客户端与服务器端的一次通信就是一次会话
+        实现状态保持，在客户端或服务端存储有关会话的数据
+        存储的方式：
+            cookie  所有数据都存在客户端，不要存敏感的数据
+            session  所有数据存储在服务端，在客户端用cookie存储session_id即key,值在服务端
+        状态保持的目地：在一段时间内跟踪请求者的状态，实现跨页面访问当前的请求者的数据
+        注意：不同请求者之间不会共享这个数据，与请求者是一一对应的
+    2.启动session
+        settings文件中设置如下：
+            INSTALLED_APPS    'django.contrib.sessions'
+            MIDDLEWARE     'django.contrib.sessions.middleware.SessionMiddleware'
+    3.使用session
+        使用session后，每个HttpRequest对象都有一个session数据，就是类似字典的对象
+        存储session，例：request.session["name"]="abc"
+        get(key,default=None)  根据键获取session值,例：request.session.get("name",None)
+        clear()   清除所有的会话，例：request.session.clear()
+        flush()  删除当前的会话并删除会话的cookie,例：request.session.flush()
+        建议删除方式：
+            from django.contrib.auth import logout
+            def Logout(request):
+            logout(request)
+            return redirect("/goo/")
+    4.设置过期时间
+        set_expriy(value)  如果不设置，默认两个星期过期，value需整数，
+        value值为0，关闭浏览器时失效
+        value值为None，表示永不过期
+        value值为时间对象，表示某个时间过期
+        示例：
+            request.session["name"]="abc"
+            request.session.set_expiry(10)  #10秒后过期
+    5.配置session存储方式
+        # 存储在数据库中，如下设置可写可不写，是默认存储模式
+        SESSION_ENGINE = "django.contrib.sessions.backends.db"
+        # 存储在缓存中，存储在本机内存中，如果丢失则不能找回，比数据库的方式读写更快
+        SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+        # 混合存储：优先从本机内存中存取，如果没有则冲数据库中存取
+        SESSION_ENGINE = "django.contrib.sessions.backends.cache_db"
+    6.使用redis缓存session
+        pip install django-redis==4.10.0
+        在setting.py中配置如下：
+        CACHES = {
+            "default": {
+                "BACKEND": "django_redis.cache.RedisCache",
+                "LOCATION": "redis://127.0.0.1:6379",
+                "OPTIONS": {
+                    "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                    "CONNECTION_POOL_KWARGS": {"max_connections": 100}
+                    # "PASSWORD": "123",
+                }
+            }
+        }
+        SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+        SESSION_CACHE_ALIAS = 'default'
+        SESSION_COOKIE_AGE = 60 * 5    #设置5分钟过期
+        
+模版：
+    1.定义模版
+        变量
+            视图传给模版的数据，要遵守标识符规则
+            语法：{{var}}
+            注意：使用的变量不存在，则插入空字符串
+            在模版中使用点语法
+                字典查询
+                属性或者方法
+                数字索引
+            在模版中调用对象的方法，注意，不能传递参数
+        标签
+            语法：{% tag %}
+            作用：
+                在输出中创建文本
+                控制逻辑和循环
+            标签内容：
+                if 格式:(else语句可有可无)
+                    第一种：
+                        {% if 表达式 %}
+                            语句1
+                        {% else %}
+                            语句2
+                        {%   endif   %}
+                    第二种：
+                        {% if 表达式1 %}
+                            语句1
+                        {% elif 表达式2%}
+                            语句2
+                        {%   endif   %}                    
+                for 格式：(empty是在列表为空或者不存在执行)
+                    第一种：
+                        {% for 变量 in 列表%}
+                        语句1
+                        {% endfor %}
+                    第二种：
+                        {% for 变量 in 列表%}
+                        语句1
+                        {% empty %}
+                        语句2
+                        {% endfor %}
+                    第三种：
+                        {{forloop.counter}} 这是一个变量只能在for里面用，表示循环几次 
+                        示例：
+                            {% for m in list1 %}
+                                {% if forloop.counter|divisibleby:2 %}  #能被2整数
+                                    <p>测试</p>
+                                {% endif %}
+                            {% endfor %}                   
+                commpent 格式：
+                    作用：注释多行，页面不会显示
+                    {% commpent %}
+                        注释的内容
+                    {%endcommpent%}
+                ifequal/ifnotequal  格式：
+                    作用：判断是否相等或者不相等
+                    {% ifequal 值1 值2 %}  #如果值1等值2执行语句
+                        语句
+                    {% endifequal %}
+                include 格式：
+                    作用：加载模版并以标签内的参数渲染
+                    格式：{% include "模版目录"  参数1 参数2 参数n %}
+                url 格式：
+                    作用：反向解析
+                    格式：{% url "namespace:name"  参数1 参数2 %}
+                    示例：
+                        <a href="{% url 'app:good' 1 %}">链接</a>
+                csrf_token 格式：
+                    作用：用于跨站请求伪造保护
+                    格式：{% csrf_token %}
+                block/extends
+                    作用：用于模版的继承，减少页面的内容重复定义，实现页面的重复使用
+                    block标签：在父模版中预留区域，子模版去填充
+                    extends标签：继承模版，需要写在模版文件的第一行
+                    示例：
+                        父：
+                            {% block main %}                        
+                            {% endblock main %}                        
+                        子：
+                            {% extends 'app/base.html' %}
+                            {% block main %}
+                            {% endblock main %}
+                autoescape
+                    作用;用于html转义
+                    示例：
+                        {% autoescape %}
+                        {% endautoescape %}
+                    或者用
+                        {% var|safe %}
+        过滤器
+            语法：{{ var|过滤器}}
+            作用：在变量被显示前修改它
+            内容：
+                lower 内容变小写
+                upper 内容变大写
+                    <h1>{{str|upper}}</h1>
+            过滤器可以传递参数，参数用引号引起来
+                join 格式：列表|join:"#"
+                    <h1>{{list|join:"#"}}</h1>  #会把列表内容用#拼接
+            如果一个变量没有被提供或者为false，空，可以使用默认值
+                default 
+                    格式：{{变量|defualt:"内容"}}
+                    示例：{{test|defualt:"没有"}}
+            根据给定格式转换日期为字符串
+                date
+                    格式:{{dateValue|date:"y-m-d"}}
+            HTML转义：
+                escape
+                
+            加减乘除
+                {{num|add:10}}
+                {{num|add:-5}}
+                {% num|widthratio num 1 5 %}  #乘相当于num/1*5
+                {% num|widthratio num 5 1 %}  #除相当于num/5*1
+
+"""
+

@@ -1,0 +1,40 @@
+from django.utils.module_loading import import_string
+from django.urls import URLResolver,URLPattern
+from collections.abc import Iterable
+from django.conf import settings
+
+
+
+
+class NewMethodMiddle(MiddlewareMixin):
+  def urlGet(self):
+    pp=import_string(settings.ROOT_URLCONF)
+    ccuu = pp.urlpatterns
+    self.get_url(ccuu)
+
+    @classmethod
+    def get_url(cls,data,parentPath=""):
+        for m in data:
+            if isinstance(m,URLPattern):
+                if hasattr(m,"name"):
+                    if parentPath != "":
+                        name = str(parentPath)+str(m.pattern)
+                        cls.urlList.add(name)
+                    else:
+                        cls.urlList.add(str(m.pattern))
+                else:
+                    continue
+            elif isinstance(m,URLResolver):
+                #URLResolver都有urlconf_name
+                if isinstance(m.urlconf_name,Iterable):
+                    #URLResolver如果pattern有值即是有父级路由
+                    if hasattr(m,"pattern"):
+                        #去除不需要的父级以及下层路由
+                        whiteList = ["admin/","auth/"]
+                        if str(m.pattern).strip() in whiteList:
+                            continue
+                        cls.get_url(m.urlconf_name,parentPath=m.pattern)
+                else:
+                    #module对象通过可不可以迭代来判断，moudle对象是不可以
+                    cls.get_url(m.urlconf_name.urlpatterns)
+        return True
